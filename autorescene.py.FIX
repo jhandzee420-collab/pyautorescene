@@ -1,0 +1,54 @@
+TypeError: basename() takes 1 positional argument but 3 were given
+is coming from this line in your script:
+
+python
+Copy code
+proof_file = find_file(
+    os.path.dirname(fpath),
+    os.path.basename(*release_srr.get_proof_filename()),
+    proof_crc
+)
+What’s wrong
+os.path.basename() only takes one argument, which should be a string path.
+
+You are doing *release_srr.get_proof_filename(), which is “unpacking” the result of get_proof_filename().
+
+If get_proof_filename() returns a tuple/list with more than one element, Python tries to pass all of them as separate arguments to basename(), causing the error.
+
+
+
+
+this was fixed with the snippet below... $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$@@@@@@@@@@@@@@@@@@@@@@@@!!!!!!!!!!!!!!!!!!!!
+
+
+
+def check_proof_and_sample(args, release_srr, release, fpath, proof_path, srs_path, doutput, srr_finfo):
+    # Function to search, check or find the Proof
+    if proof_path:
+        utils.res.verbose("\t - Searching for Proof on local disk")
+        proof_crc = calc_crc(proof_path)
+
+        # Get proof filename(s) safely
+        proof_filenames = release_srr.get_proof_filename()
+        if isinstance(proof_filenames, str):
+            proof_filenames = [proof_filenames]
+
+        # Pick the first proof filename
+        proof_file = find_file(os.path.dirname(fpath), os.path.basename(proof_filenames[0]), proof_crc)  # We use CRC to find the .jpg
+
+        if proof_file and proof_file.lower() == proof_path.lower():
+            utils.res.verbose(f"\t\t - {utils.res.SUCCESS} - Found proof -> {proof_file}")
+
+        if proof_file and proof_file.lower() != proof_path.lower():  # We found it but maybe the Proof is renamed or not in the right place
+            utils.res.verbose(f"\t\t - {utils.res.SUCCESS} - Found proof -> {proof_file}")
+            try:
+                copy_file(proof_file, os.path.dirname(proof_path))
+                if not args['keep_srs'] and os.path.exists(proof_file):
+                    os.remove(proof_file)
+            except Exception as e:
+                utils.res.verbose(f"\t\t - {utils.res.FAIL} - Could not copy proof file to {os.path.dirname(proof_path)} -> {e}")
+                missing_files.append(os.path.join(release['release'], os.path.basename(os.path.dirname(proof_path)), proof_filenames[0]))
+
+
+
+###################################### END #################################################################
